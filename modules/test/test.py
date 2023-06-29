@@ -1,7 +1,11 @@
 import cv2
 import numpy as np
+import pandas as pd
 from glob import glob
 import modules.preprocess.preprocessing as preprocessing
+from sklearn.metrics import *
+import matplotlib.pyplot as plt
+
 
 def load_test(data_path, target_size, weld_type = False, preprocess = None):
     """테스트 데이터를 불러오는 함수
@@ -28,3 +32,107 @@ def load_test(data_path, target_size, weld_type = False, preprocess = None):
     test_image_list = np.array(test_image_list)
     test_image_list = test_image_list.reshape(-1, target_size[0], target_size[1], target_size[2])
     return test_image_list, test_image_label, test_image
+
+def evaluate_data(Y_test, Y_pred):
+
+    TP = 0
+    FP = 0
+    FN = 0
+    TN = 0
+
+    for i in range(len(Y_pred)):
+        if Y_test[i] == 0 and Y_pred[i] == 0:
+            TN = TN + 1
+        elif Y_test[i] == 0 and Y_pred[i] == 1:
+            FP = FP + 1
+        elif Y_test[i] == 1 and Y_pred[i] == 0:
+            FN = FN + 1
+        elif Y_test[i] == 1 and Y_pred[i] == 1:
+            TP = TP + 1
+
+    Recall = recall_score(Y_test, Y_pred)
+    Precision = precision_score(Y_test, Y_pred)
+    Accuracy = accuracy_score(Y_test, Y_pred)
+    F1_Score = f1_score(Y_test, Y_pred)
+    return TN, FP, FN, TP, Accuracy, F1_Score, Recall, Precision
+
+def generate_report(df):
+    thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    total_Accuracy = []
+    total_F1_Score = []
+    total_Recall = []
+    total_Precision = []
+    total_inspection_persent = []
+    total_hit_ratio = []
+    total_TN = []
+    total_FP = []
+    total_FN = []
+    total_TP = []
+    total_minus_inspection_present = []
+    for threshold in thresholds:
+        df_test = df.copy()
+        df_test["predict"] = df_test["predict"].apply(lambda x: 1 if x >= threshold else 0)
+        inspection_df = df_test.loc[threshold < df_test["predict"]]
+        temp_df = df_test.drop(inspection_df.index, axis = 0)
+        inspection_len = len(inspection_df)
+        inspection_persent = (inspection_len/len(temp_df))
+        minus_inspection_persent = 1 - (inspection_len/len(temp_df))
+        TN, FP, FN, TP, Accuracy, F1_Score, Recall, Precision = evaluate_data(df_test["ground_truth"], df_test["predict"])
+        hit_ratio = TP/(FN + TP)
+        total_Accuracy.append(Accuracy)
+        total_F1_Score.append(F1_Score)
+        total_Recall.append(Recall)
+        total_Precision.append(Precision)
+        total_inspection_persent.append(inspection_persent)
+        total_hit_ratio.append(hit_ratio)
+        total_TN.append(TN)
+        total_FP.append(FP)
+        total_FN.append(FN)
+        total_TP.append(TP)
+        total_minus_inspection_present.append(minus_inspection_persent)
+
+    df_result = pd.DataFrame({"threshold" : thresholds,
+                        "TN" : total_TN,
+                        "FP" : total_FP,
+                        "FN" : total_FN,
+                        "TP" : total_TP,
+                        "hit_ratio" : total_hit_ratio,
+                        "재검률" : total_inspection_persent,
+                        "Accuracy" : total_Accuracy,
+                        "F1_Score" : total_F1_Score,
+                        "Recall" : total_Recall,
+                        "precision" : total_Precision})
+
+    df_result.to_csv("/app/temp/hit_evaluation_result.csv", index = False)
+    
+    x = list(df_result["threshold"])
+    y1 = list(df_result["hit_ratio"])
+    y2 = total_minus_inspection_present
+
+    fig, ax1 = plt.subplots()
+    plt.title("hit_ratio")
+    ax1.set_xlabel('Threshold')
+    ax1.set_ylabel('hit_ratio')
+    line1 = ax1.plot(x, y1, color = 'red', alpha = 0.5, label = "hit_ratio(%)", marker = "o")
+
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('1 - inspection')
+    line2 = ax2.plot(x, y2, color = 'blue', alpha = 0.5, label = "1 - inspection", marker = "o")
+
+    lines = line1 + line2
+    labels = [l.get_label() for l in lines]
+    ax1.legend(lines, labels, loc='upper center')
+    
+    plt.savefig("/app/temp/hit_ratio.png")
+    plt.close()
+    
+def test_model(model, test_image_list, test_image_label, test_image):
+    test_pred = model.predict(test_image_list)
+    df = pd.DataFrame()
+    df["ground_truth"] = test_image_label
+    df["predict"] = test_pred
+    df["path"] = test_image
+    
+    df.to_csv("/app/temp/test_result.csv", index = False)
+    generate_report(df)
+    
