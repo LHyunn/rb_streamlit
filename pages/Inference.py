@@ -23,7 +23,7 @@ from modules.inference import inference as inf
 with st.expander("Explanation"):
     st.write("""
              
-            라벨이 있는 경우 디렉토리로 라벨을 지정해주고, 라벨이 없는 경우 한 디렉토리에 모든 이미지를 넣어준다.
+            라벨이 있는 경우 디렉토리로 라벨을 지정해주고, 라벨이 없는 경우 한 디렉토리에 모든 이미지를 넣어준다. 아무것도 올리지 않으면 샘플 데이터가 자동으로 로드된다.
             
             ex) 라벨이 있는 경우                   ex) 라벨이 없는 경우
             
@@ -95,21 +95,28 @@ os.remove('summary.txt')
 with col2.expander("Model Summary"):
     st.code(summary_str, language="json")
 ########################################################################################################################
-if files is not None:
-    #save images
-    save_img_path = "/app/data/User/image"
-    save_zip_path = "/app/data/User/zip"
-    for file in files:
-        if file.type == "image/jpeg":
-            with open(os.path.join(save_img_path, file.name), "wb") as f:
-                f.write(file.getbuffer())
-        elif file.type == "application/zip":
-            with open(os.path.join(save_zip_path, file.name), "wb") as f:
-                f.write(file.getbuffer())
-            os.system(f"unzip {os.path.join(save_zip_path, file.name)} -d {save_img_path}")
+
 ########################################################################################################################
 col1_1, col1_2, col1_3, col1_4, col1_5, col1_6, col1_7, col1_8 = st.columns(8)
 if col1_8.button("Inference"):
+    if files is not None:
+        if len(files) == 0:
+            print("load sample data")
+            save_img_path = "/app/data/User/image"
+            #/app/sample/test.zip 를 save_img_path에 압축 해제
+            os.system(f"unzip -o /app/sample/test.zip -d {save_img_path}")
+        else:
+            print("save images")
+            save_img_path = "/app/data/User/image"
+            save_zip_path = "/app/data/User/zip"
+            for file in files:
+                if file.type == "image/jpeg":
+                    with open(os.path.join(save_img_path, file.name), "wb") as f:
+                        f.write(file.getbuffer())
+                elif file.type == "application/zip":
+                    with open(os.path.join(save_zip_path, file.name), "wb") as f:
+                        f.write(file.getbuffer())
+                    os.system(f"unzip -o {os.path.join(save_zip_path, file.name)} -d {save_img_path}")
     try:
         shutil.rmtree("/app/temp")
     except:
@@ -117,35 +124,35 @@ if col1_8.button("Inference"):
     finally:
         os.makedirs("/app/temp/CAM", exist_ok=True)
     images_count = len(os.listdir(save_img_path))
-    if images_count == 0:
-        message.error("Please upload images.")
-    else:
-        message.info("Inference Start.")
+    if images_count != 0:
+        message.info("Inference Start. This may take a while...")
         test_image_list, test_image_label, test_image_path = tt.load_test("/app/data/User/image/test", target_size, weld_type = weld_type)
         grad_model = tf.keras.models.Model([model.inputs], [model.get_layer(last_conv_layer).output, model.output])
-        message.info("Loaded data.")
+        message.info("Loaded data, Total images : {}".format(images_count))
         time.sleep(1)
-        message.info("Testing...")
+        message.info("Predicting...")
         col1, col2 = st.columns(2)
         if test_image_label is None:
             tt.test_model_no_label(model, test_image_list, test_image_path)
         else:
             tt.test_model(model, test_image_list, test_image_label, test_image_path)
-    message.info("Testing... Done.")
-    time.sleep(1)
-    message.info("Making Grad-CAM...")
+        message.info("Predicting... Done.")
+        time.sleep(1)
+        message.info("Making Grad-CAM...")
+        for image, path, i in zip(test_image_list, test_image_path, range(len(test_image_list))):
+            image_exp = np.expand_dims(image, axis=0)
+            file_name = path.split("/")[-1].split(".")[0]
+            heat_map, pred = inf.make_gradcam_heatmap(image_exp, grad_model)
+            inf.save_and_display_gradcam(image, heat_map, f"/app/temp/CAM/{file_name}.png")
+            message.info("Making Grad-CAM... {}/{}".format(i+1, len(test_image_list)))
+        message.info("Making Grad-CAM... Done.")
+        time.sleep(1)
+        message.success("Inference Done. Please check the result.")
+        
+    else:
+        message.error("There is no image in the directory.")
     
     
-    
-    
-    for image, path in zip(test_image_list, test_image_path):
-        image_exp = np.expand_dims(image, axis=0)
-        file_name = path.split("/")[-1].split(".")[0]
-        heat_map, pred = inf.make_gradcam_heatmap(image_exp, grad_model)
-        inf.save_and_display_gradcam(image, heat_map, f"/app/temp/CAM/{file_name}.png")
-    message.info("Making Grad-CAM... Done.")
-    time.sleep(1)
-    message.success("Inference Done.")
         
     
     
