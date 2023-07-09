@@ -7,7 +7,7 @@ from sklearn.metrics import *
 import matplotlib.pyplot as plt
 
 
-def load_test(data_path, target_size, weld_type = False, preprocess = None):
+def load_test(data_path, target_size, weld_type = False, preprocess = None, comp = None):
     """테스트 데이터를 불러오는 함수
     """
     if weld_type == True and preprocess is not None:
@@ -21,7 +21,7 @@ def load_test(data_path, target_size, weld_type = False, preprocess = None):
         test_image_label = None
         
     test_image_list = []
-    for i in test_image_path:
+    for i, j in zip(test_image_path, range(len(test_image_path))):
         img = cv2.imread(i, (cv2.IMREAD_GRAYSCALE if target_size[2] == 1 else cv2.IMREAD_COLOR))
         img = cv2.resize(img, (target_size[0], target_size[1]))
         if weld_type:
@@ -34,6 +34,7 @@ def load_test(data_path, target_size, weld_type = False, preprocess = None):
         img = img / 255.
             
         test_image_list.append(img)
+        comp.info("Loading data... {}/{}".format(j+1, len(test_image_path))) if comp is not None else None
     test_image_list = np.array(test_image_list)
     test_image_list = test_image_list.reshape(-1, target_size[0], target_size[1], target_size[2])
     

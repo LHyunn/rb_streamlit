@@ -13,7 +13,7 @@ import cv2
 from glob import glob
 
 """
-## Result.
+## Result. (시각화는 300개까지만 보여줍니다.)
 
 """
 def get_pred(df, image):
@@ -46,15 +46,18 @@ except:
 col_1, col_2 = st.columns(2)
 
 images = os.listdir(f"/app/temp/CAM")
-images = natsorted(images)
+#파일명이 긴 순서대로 정렬
+images = sorted(images, key=len)
+#역순으로 정렬
+images = images[::-1]
 images_list = []
 for i in range(len(images)):
     image = cv2.imread(f"/app/temp/CAM/{images[i]}", cv2.IMREAD_COLOR)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     images_list.append(image)
     
-for image, i, limit in zip(images, range(len(images_list)), range(300)):
-    if i == limit:
+for image, i in zip(images, range(len(images_list))):
+    if i == 300:
         break
     
     
