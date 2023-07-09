@@ -5,7 +5,10 @@ RUN apt-get update && apt-get install -y \
     libatlas-base-dev \
     git \
     tzdata \
-    libgl1-mesa-glx
+    libgl1-mesa-glx \
+    libcairo2-dev \
+    pkg-config \
+    python3-dev
 ENV TZ Asia/Seoul
 RUN git clone https://github.com/LHyunn/rb_streamlit .
 RUN pip3 install --upgrade pip
