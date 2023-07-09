@@ -53,7 +53,11 @@ for i in range(len(images)):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     images_list.append(image)
     
-for image, i in zip(images, range(len(images_list))):
+for image, i, limit in zip(images, range(len(images_list)), range(300)):
+    if i == limit:
+        break
+    
+    
     if i % 2 == 0:
         col_1.write(f"이미지 : {image}")
         col_1.write(f"예측 : {get_pred(test_result_df, image)}")

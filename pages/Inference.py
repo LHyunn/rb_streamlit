@@ -51,7 +51,7 @@ with st.expander("Explanation"):
 
 ########################################################################################################################
 message = st.empty()
-model_path = st.selectbox("Select Model", options=glob("/app/models/*.h5"))
+model_path = st.selectbox("Select Model", options=glob("/app/models/**/*.h5", recursive=True))
 message.info("Please wait for loading model...")
 model = tf.keras.models.load_model(model_path)
 message.success("Model loaded successfully. Ready to inference.")
