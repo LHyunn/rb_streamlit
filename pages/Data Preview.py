@@ -66,6 +66,12 @@ if button2:
             image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX)
             images_list.append(image)
             
+    elif preprocess2 == "흑백 반전":
+        for i in range(len(images)):
+            image = cv2.imread(images[i], cv2.IMREAD_GRAYSCALE)
+            image = 255 - image
+            images_list.append(image)
+            
     for image, i in zip(images, range(len(images_list))):
         if i % 7 == 0:
             col_1.image(images_list[i])
