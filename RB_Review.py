@@ -7,7 +7,7 @@ if __name__ == "__main__":
     config.set_config()
 
 """
-# HyundaiRB NDT Image Classification
+# NDT Image Classification
 
 ## 모든 데이터는 외부로의 유출을 금합니다.
 
